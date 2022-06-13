@@ -9,71 +9,69 @@ from sensor_msgs.msg import Image
 import math
 from dynamic_reconfigure.server import Server
 from lane_follow_blob.cfg import CastConfig
+from typing import List
+from lane_follow_blob.vec import Vec
+from lane_follow_blob.utils import rows, cols, draw_point, deg2rad
 
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-    def __str__(self):
-        return f'({self.x},{self.y})'
-    def __repr__(self):
-        return f'({self.x},{self.y})'
-    def mul(self,s):
-        return Point(self.x*s,self.y*s)
 
-def dist(p0, p1) -> float:
-    return math.sqrt((p0.x-p1.x)**2 + (p0.y-p1.y)**2)
-
-def rows(mat: ndarray) -> int:
-    return mat.shape[0]
-
-def cols(mat: ndarray) -> int:
-    return mat.shape[1]
-
-def draw_point(image: ndarray, p: Point, color=(255,255,255), r=5):
-    cv.circle(image, (int(p.x), int(p.y)), int(r), color, -1)
-
-def rad(deg):
-    return deg * (math.pi / 180)
-    
 def point_on_line(x0, y0, theta, r):
+    """
+    Use the parametric equation of a line to find a point
+    that is r units away from (x0,y0) at theta degrees
+    Convert to int t
+    """
     x = x0 + r * math.cos(theta)
     y = y0 + r * math.sin(theta)
-    return Point(int(x), int(y))
+    return Vec(x, y)
 
-#def spring(p0, points, blob_coeff=0.1, blob_len=0.2) -> Point:
-#    p_a = Point(0,0)
-#    rospy.loginfo(f'p_a: {p_a}')
-#    for p in points:
-#        diffx = p0.x - p.x
-#        diffy = p0.y - p.y
-#
-#        p_a.x += p.x
-#        p_a.y += p.y
-#
-#        length = math.sqrt(diffx * diffx + diffy * diffy);
-#
-#        if length < .01: continue
-#
-#        diffx /= length
-#        diffy /= length
-#
-#        spring_force = -1 * blob_coeff * (length - blob_len)
-#
-#        diffx *= spring_force
-#        diffy *= spring_force
-#
-#        p0.x = diffx
-#        p0.y = diffy
-#
-#    p_a.x /= len(points)
-#    p_a.y /= len(points)
-#
-#    p0.x = p_a.x + p0.x
-#    p0.y = p_a.y + p0.y
-#
-#    return p0
 
+def raycast_find_nonzero(image: ndarray, p0: Vec, theta: float, r_step=5, iters=100, do_draw_points=False) -> List[Vec]:
+    """
+    Cast a ray from p0 in the direction of theta
+    Stop at the first non-zero pixel
+    Assumes image is a 3-channel ndarray. If single channel, modify the zero check below
+    """
+    # Don't start at zero if using draw_point in loop, see note below
+    for r in range(3, iters+3):
+        p = point_on_line(p0.x, p0.y, theta, -r * r_step)
+        p = Vec(int(p.x), int(p.y)) # convert to int since we are indexing pixels
+
+        # Edge of image
+        if not (0 < p.x < cols(image) and 0 < p.y < rows(image)):
+            # out of bounds, stop
+            break
+
+        # Found non-zero
+        # Assumes multi-channel image. If single channel, remove channel index `[0]`
+        if image[int(p.y), int(p.x)][0] > 0:
+            break
+
+        # If drawing points, raycasts after this one may collide with drawn
+        #  points, especially near p0. To fix for demo purposes we
+        #  use a range above that starts 3 units from p0
+        if do_draw_points:
+            draw_point(image, p, r=1)
+
+    return p
+
+
+def compute_spring_force(thetas: ndarray, spring_lengths: ndarray):
+    k = 1 # spring constant
+
+    # Use -k so springs pull
+    force = -k * spring_lengths
+
+    # Compute force vector along each angle
+    force_vectors = [Vec(math.cos(theta), math.sin(theta)).smul(f) for theta, f in zip(thetas, force)]
+
+    # Compute the mean force
+    p_diff = Vec(0,0)
+    for v in force_vectors:
+        p_diff = p_diff.add(v)
+    p_diff = p_diff.sdiv(len(force_vectors))
+
+    return p_diff
+    
 
 class CastExample:
 
@@ -94,79 +92,37 @@ class CastExample:
 
 
     def loop(self):
-        print('loop')
         image = np.zeros((350,400,3), dtype=np.uint8)
         cfg = self.config
 
-        # Draw a line on the image
-        #cv.line(image, (230,190), (320, 320), (10,200,200), 7)
-        #cv.line(image, (190,190), (30, 320), (10,200,200), 7)
+        # Add some test lane lines to the image
         cv.line(image, (cfg.l1_x1,cfg.l1_y1), (cfg.l1_x2, cfg.l1_y2), (10,200,200), 7)
         cv.line(image, (cfg.l2_x1,cfg.l2_y1), (cfg.l2_x2, cfg.l2_y2), (10,200,200), 7)
 
-        # Lower center of image
-        p0 = Point(cols(image)/2, rows(image) - rows(image)/10)
+        # Starting point (p0): Lower center of image
+        p0 = Vec(cols(image)/2, rows(image) - rows(image)/10)
         draw_point(image, p0, color=(0,0,255), r=5)
 
-        points = []
-        r_step = 5 #math.sqrt(2)
-        thetas = rad(np.array(list(range(0, 180+1, 15))))
-        for theta in thetas:
-            for r in range(3, 100):
-                pn = point_on_line(p0.x, p0.y, theta, -r * r_step)
+        # The angles of our springs
+        thetas = deg2rad(np.array(list(range(0, 180+1, 15))))
 
-                # Edge of image
-                if not (0 < pn.x < cols(image) and 0 < pn.y < rows(image)):
-                    # out of bounds, stop
-                    points.append(pn)
-                    break
+        # The locations where the springs intersect the lane lines
+        points = [raycast_find_nonzero(image, p0, theta, do_draw_points=True) for theta in thetas]
+        for p in points: draw_point(image, p, r=3, color=(255, 50, 50))
 
-                # Found line
-                if image[int(pn.y), int(pn.x)][0] > 0:
-                    points.append(pn)
-                    break
+        # Compute the overall spring force on the point
+        spring_lengths = np.array([Vec.dist(p0, p) for p in points])
+        p_diff = compute_spring_force(thetas, spring_lengths)
 
-                draw_point(image, pn, r=1)
-
-
-        for p in points:
-            draw_point(image, p, r=3, color=(255, 50, 50))
-
-
-        # C = cols(image)
-        # R = rows(image)
-        # p_result = spring(Point(p0.x/C, p0.y/R), [Point(p.x/C, p.y/R) for p in points])
-        # rospy.loginfo(p_result)
-        # draw_point(image, Point(p_result.x * C, p_result.y * R), color=(0,255), r=5)
-
-        # Compute spring lengths
-        spring_lengths = np.array([dist(p0, p) for p in points])
-
-        # Compute spring pull
-        k = 1
-        force = k * spring_lengths * -1 # -1: pull
-        normalized_vectors = [Point(math.cos(theta), math.sin(theta)).mul(f) for theta, f in zip(thetas, force)]
-        p_diff = Point(0,0)
-        for v in normalized_vectors:
-            p_diff.x += v.x
-            p_diff.y += v.y
-        p_diff.x /= len(normalized_vectors)
-        p_diff.y /= len(normalized_vectors)
+        # Draw the force vector as a point relative to p0
+        p_final = Vec(p0.x + p_diff.x, p0.y + p_diff.y)
+        draw_point(image, Vec(p_final.x, p_final.y), color=(0,255,255), r=5)
         
-        p_final = Point(p0.x + p_diff.x, p0.y + p_diff.y)
-        draw_point(image, Point(p_final.x, p_final.y), color=(0,255,255), r=5)
+        print('final force vector:', p_diff)
 
-
-
-
+        # Publish debug image
         self.publish_image(image)
         
-
-
-
-
-
-
 
 rospy.init_node('cast')
 cast = CastExample()
