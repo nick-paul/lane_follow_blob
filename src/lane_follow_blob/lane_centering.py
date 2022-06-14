@@ -16,7 +16,7 @@ def point_on_line(x0, y0, theta, r):
     return Vec(x, y)
 
 
-def raycast_find_nonzero(image: ndarray,
+def raytrace_find_nonzero(image: ndarray,
                          p0: Vec,
                          theta: float,
                          r_step=5,
@@ -41,9 +41,6 @@ def raycast_find_nonzero(image: ndarray,
         if image[int(p.y), int(p.x)] > 0:
             break
 
-        # If drawing points, raycasts after this one may collide with drawn
-        #  points, especially near p0. To fix for demo purposes we
-        #  use a range above that starts 3 units from p0
         if debug_image is not None:
             draw_point(debug_image, p, r=1)
 
@@ -73,10 +70,10 @@ def center_lane(image: ndarray, p0: Vec, debug_image=True) -> Vec:
         draw_point(debug_image, p0, color=(0,0,255), r=5)
 
     # The angles of our springs
-    thetas = deg2rad(np.array(list(range(0, 180+1, 5))))
+    thetas = deg2rad(np.array(list(range(0, 180+1, 10))))
 
     # The locations where the springs intersect the lane lines
-    points = [raycast_find_nonzero(image, p0, theta, debug_image=debug_image) for theta in thetas]
+    points = [raytrace_find_nonzero(image, p0, theta, debug_image=debug_image) for theta in thetas]
     if debug_image is not None:
         for p in points:
             draw_point(debug_image, p, r=3, color=(255, 50, 50))

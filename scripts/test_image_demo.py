@@ -8,7 +8,7 @@ from lane_follow_blob.cfg import BlobConfig
 from numpy import ndarray
 from lane_follow_blob.vec import Vec
 from lane_follow_blob.lane_centering import center_lane
-from lane_follow_blob.lane_finding import find_lanes
+from lane_follow_blob.lane_detection import find_lanes
 from lane_follow_blob.utils import rows, cols
 import rospkg
 import os
