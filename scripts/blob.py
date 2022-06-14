@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from distutils.log import debug
 import rospy
 from sensor_msgs.msg import Image

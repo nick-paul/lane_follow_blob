@@ -39,7 +39,8 @@ def compute_lines(image: ndarray,
 
             slope = diffy / diffx
 
-            if abs(slope) < config.lines_min_slope: continue
+            if abs(slope) < config.lines_min_slope or abs(slope) > config.lines_max_slope:
+                continue
 
             diffx *= 5
             diffy *= 5
@@ -68,15 +69,8 @@ def find_lanes(input_image: ndarray,
     lane-finding algorithm may be used instead
     """
 
-    # Get the value channel
-    # This assumes bright-on-dark lanes
-    hsv = cv.cvtColor(input_image, cv.COLOR_BGR2HSV)
-    (h, s, v) = cv.split(hsv)
-
     # Median blur
-    v = cv.medianBlur(v, config.enhance_blur * 2 + 1)
-    image = cv.merge((h, s, v))
-    image = cv.cvtColor(image, cv.COLOR_HSV2BGR)
+    image = cv.medianBlur(input_image, config.enhance_blur * 2 + 1)
 
 
     ## Find edges using Laplacian and Sobel
@@ -91,6 +85,11 @@ def find_lanes(input_image: ndarray,
             config.canny_upper_thresh,
             apertureSize=config.canny_aperture_size * 2 + 1)
 
+    # Dilate images
+    dilation_size = (2 * config.blob_dilation_size + 1, 2 * config.blob_dilation_size + 1)
+    dilation_anchor = (config.blob_dilation_size, config.blob_dilation_size)
+    dilate_element = cv.getStructuringElement(cv.MORPH_RECT, dilation_size, dilation_anchor)
+    image = cv.dilate(image, dilate_element)
 
     if config.lines_enable:
         image = compute_lines(image, config, debug_image=debug_image)
