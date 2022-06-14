@@ -1,0 +1,6 @@
+<launch>
+    <node name="blob" pkg="lane_follow_blob" type="blob.py" output="screen">
+        <param name="image_topic" value="/car/camera1/image_raw" />
+        <param name="twist_topic" value="/prizm/twist_controller/twist_cmd" />
+    </node>
+</launch>

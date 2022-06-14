@@ -1,3 +1,8 @@
+#
+# The follwing code is a more-or-less direct port of the original blob implementation
+# https://github.com/LTU-Actor/Route-Blob
+#
+
 from distutils.log import debug
 import rospy
 from sensor_msgs.msg import Image
