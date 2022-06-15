@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="lane_follow_blob" name="cast" type="cast.py" />
+    <node pkg="rqt_gui" name="rqt_gui" type="rqt_gui" />
+</launch>

@@ -65,7 +65,7 @@ def compute_spring_force(thetas: ndarray, spring_lengths: ndarray):
     return p_diff
     
 
-def center_lane(image: ndarray, p0: Vec, debug_image=True) -> Vec:
+def center_lane(image: ndarray, p0: Vec, debug_image=True, iters=100) -> Vec:
     if debug_image is not None:
         draw_point(debug_image, p0, color=(0,0,255), r=5)
 
@@ -73,7 +73,7 @@ def center_lane(image: ndarray, p0: Vec, debug_image=True) -> Vec:
     thetas = deg2rad(np.array(list(range(0, 180+1, 10))))
 
     # The locations where the springs intersect the lane lines
-    points = [raytrace_find_nonzero(image, p0, theta, debug_image=debug_image) for theta in thetas]
+    points = [raytrace_find_nonzero(image, p0, theta, debug_image=debug_image, iters=iters) for theta in thetas]
     if debug_image is not None:
         for p in points:
             draw_point(debug_image, p, r=3, color=(255, 50, 50))

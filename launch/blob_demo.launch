@@ -1,6 +1,14 @@
 <launch>
+
+    <include file="$(find ackermann_vehicle_gazebo)/launch/ackermann_vehicle.launch">
+        <arg name="world_name" value="circleroad" />
+    </include>
+
     <node name="blob" pkg="lane_follow_blob" type="blob.py" output="screen">
         <param name="image_topic" value="/car/camera1/image_raw" />
         <param name="twist_topic" value="/prizm/twist_controller/twist_cmd" />
     </node>
+
+    <node pkg="rqt_gui" name="rqt_gui" type="rqt_gui" />
+
 </launch>

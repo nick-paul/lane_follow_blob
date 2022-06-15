@@ -1,3 +1,0 @@
-<launch>
-    <node name="blob" pkg="lane_follow_blob" type="blob.py" output="screen" />
-</launch>

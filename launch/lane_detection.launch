@@ -1,0 +1,7 @@
+<launch>
+    <arg name="draw_blob" default="False" />
+    <node pkg="lane_follow_blob" name="test_image_demo" type="test_image_demo.py">
+        <param name="draw_blob" value="$(arg draw_blob)" />
+    </node>
+    <node pkg="rqt_gui" name="rqt_gui" type="rqt_gui" />
+</launch>

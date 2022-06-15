@@ -59,10 +59,11 @@ class TestImageDemo:
         self.last_image_1 = lanes_image.copy()
 
         # Run blob lane centering algorithm
-        p0 = Vec(cols(lanes_image)/2, rows(lanes_image) - rows(lanes_image)/10)
-        p_diff = center_lane(lanes_image, p0, debug_image=None)
-        adjust = p_diff.x
-        rospy.loginfo(f'force vector: {p_diff}')
+        if rospy.get_param('~draw_blob', False):
+            p0 = Vec(cols(lanes_image)/2, rows(lanes_image) - rows(lanes_image)/10)
+            p_diff = center_lane(lanes_image, p0, debug_image=debug_image, iters=200)
+            adjust = p_diff.x
+            rospy.loginfo(f'force vector: {p_diff}')
 
         self.last_debug_image = debug_image
         print('done processing')
