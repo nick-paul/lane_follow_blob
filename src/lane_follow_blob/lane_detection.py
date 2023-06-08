@@ -80,11 +80,26 @@ def find_lanes(input_image: ndarray,
     if config.med_blur_enable:
         image = cv.medianBlur(image, config.med_blur * 2 + 1)
 
+    if config.enable_less_color:
+        image = cv.cvtColor(image, cv.COLOR_BGR2HSV);
+        channels = cv.split(image)
+        channels[2] -= (config.less_color_mux * channels[1]).astype(np.uint8)
+        image = cv.merge(channels);
+        image = cv.cvtColor(image, cv.COLOR_HSV2BGR);
 
-    ## Find edges using Laplacian and Sobel
-    # Canny could also be used here but the Laplacian/Sobel
-    # approach typically yeilds improved expiremental
-    # results for this case
+    if config.enable_clahe:
+        # convert to lab
+        lab = cv.split(cv.cvtColor(image, cv.COLOR_BGR2LAB))
+        clahe = cv.createCLAHE(clipLimit=config.clahe_clip)
+        lab[0] = clahe.apply(lab[0]) # apply to lum channel only
+        image = cv.cvtColor(cv.merge(lab), cv.COLOR_LAB2BGR)
+
+    if config.enable_color_correct:
+        image = cv.convertScaleAbs(image, alpha=config.cc_alpha, beta=config.cc_beta)
+
+    if config.enable_sharpen:
+        image = cv.GaussianBlur(image, (0, 0), config.sharp_kernel * 2 + 1);
+        image = cv.addWeighted(image, 1.5, image, -0.5, 0);
 
 
     if config.edge_detect_enable:

@@ -12,6 +12,7 @@ from lane_follow_blob.lane_detection import find_lanes
 from lane_follow_blob.utils import rows, cols
 import rospkg
 import os
+import traceback
 
 
 
@@ -36,11 +37,18 @@ class TestImageDemo:
 
 
     def dynamic_reconfigure_callback(self, config, level):
-        rospy.logwarn('Got config!')
-        self.config = config
-        self.process(self.image)
-        #breakpoint()
-        return config
+        try:
+            rospy.logwarn('Got config!')
+            self.config = config
+            self.process(self.image)
+            #breakpoint()
+            return config
+        except Exception as e:
+            print(traceback.format_exc())
+            # or
+            #print(sys.exc_info()[2])
+            return config
+
 
 
     def change_image_cb(self, val):
