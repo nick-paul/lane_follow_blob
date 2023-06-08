@@ -119,7 +119,7 @@ class LaneFollowBlob:
         (h, s, v) = cv.split(hsv)
 
         # Median blur
-        v = cv.medianBlur(v, config.enhance_blur * 2 + 1)
+        v = cv.medianBlur(v, config.med_blur * 2 + 1)
         image = cv.merge((h, s, v))
         image = cv.cvtColor(image, cv.COLOR_HSV2BGR)
 

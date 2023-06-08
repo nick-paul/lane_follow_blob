@@ -39,6 +39,7 @@ class TestImageDemo:
         rospy.logwarn('Got config!')
         self.config = config
         self.process(self.image)
+        #breakpoint()
         return config
 
 
@@ -57,6 +58,11 @@ class TestImageDemo:
         # Find the lanes in the image
         lanes_image = find_lanes(input_image, self.config, debug_image=debug_image)
         self.last_image_1 = lanes_image.copy()
+
+        # If the output of the find_lanes function is not a mask, convert it to one
+        if len(lanes_image.shape) == 3:
+            (B, G, R) = cv.split(lanes_image)
+            _, lanes_image = cv.threshold(B,127,255,cv.THRESH_BINARY) 
 
         # Run blob lane centering algorithm
         p0 = Vec(cols(lanes_image)/2, rows(lanes_image) - rows(lanes_image)/10)
@@ -80,6 +86,6 @@ while not rospy.is_shutdown():
             window_setup_done = True
 
     if demo.last_image_1 is not None:
-        cv.imshow('med', demo.last_image_1)
+        cv.imshow('find_lanes', demo.last_image_1)
 
     cv.waitKey(1)

@@ -1,0 +1,12 @@
+<launch>
+    <node name="blob" pkg="lane_follow_blob" type="test_image_demo.py" output="screen" />
+
+    <node
+        name="lane_detect_config"
+        pkg="rqt_gui"
+        type="rqt_gui"
+        respawn="false"
+        output="screen"
+        args="--perspective-file $(find lane_follow_blob)/lane_detection.perspective"
+    />
+</launch>

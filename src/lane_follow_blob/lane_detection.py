@@ -4,6 +4,11 @@ import numpy as np
 from lane_follow_blob.utils import cols, rows
 from lane_follow_blob.cfg import BlobConfig
 
+class EdgeMethod:
+    """ Must match edge_method enum in config """
+    canny = 0
+    laplac = 1
+
 
 def compute_lines(image: ndarray,
                   config: BlobConfig,
@@ -69,29 +74,40 @@ def find_lanes(input_image: ndarray,
     lane-finding algorithm may be used instead
     """
 
+    image = input_image
+
     # Median blur
-    image = cv.medianBlur(input_image, config.enhance_blur * 2 + 1)
+    if config.med_blur_enable:
+        image = cv.medianBlur(image, config.med_blur * 2 + 1)
 
 
     ## Find edges using Laplacian and Sobel
     # Canny could also be used here but the Laplacian/Sobel
     # approach typically yeilds improved expiremental
     # results for this case
-    # image = cv.Laplacian(image, -1, config.lapla_ksize * 2 + 1)
-    # image = cv.Sobel(image, -1, config.sobel_xorder,
-    #             config.sobel_yorder,
-    #             config.sobel_ksize * 2 + 1)
-    image = cv.Canny(image, config.canny_lower_thresh,
-            config.canny_upper_thresh,
-            apertureSize=config.canny_aperture_size * 2 + 1)
+
+
+    if config.edge_detect_enable:
+        if config.edge_method == EdgeMethod.canny:
+            image = cv.Canny(image, config.canny_lower_thresh,
+                    config.canny_upper_thresh,
+                    apertureSize=config.canny_aperture_size * 2 + 1)
+        elif config.edge_method == EdgeMethod.laplac:
+            image = cv.Laplacian(image, -1, config.lapla_ksize * 2 + 1)
+            image = cv.Sobel(image, -1, config.sobel_xorder,
+                        config.sobel_yorder,
+                        config.sobel_ksize * 2 + 1)
 
     # Dilate images
-    dilation_size = (2 * config.blob_dilation_size + 1, 2 * config.blob_dilation_size + 1)
-    dilation_anchor = (config.blob_dilation_size, config.blob_dilation_size)
-    dilate_element = cv.getStructuringElement(cv.MORPH_RECT, dilation_size, dilation_anchor)
-    image = cv.dilate(image, dilate_element)
+    if config.dilation_enable:
+        dilation_size = (2 * config.dilation_size + 1, 2 * config.dilation_size + 1)
+        dilation_anchor = (config.dilation_size, config.dilation_size)
+        dilate_element = cv.getStructuringElement(cv.MORPH_RECT, dilation_size, dilation_anchor)
+        image = cv.dilate(image, dilate_element)
 
     if config.lines_enable:
         image = compute_lines(image, config, debug_image=debug_image)
+
+    # always at least threshold it since the output is expecting a black and white image
 
     return image
