@@ -47,8 +47,8 @@ def compute_lines(image: ndarray,
             if abs(slope) < config.lines_min_slope or abs(slope) > config.lines_max_slope:
                 continue
 
-            diffx *= 5
-            diffy *= 5
+            diffx *= config.lines_extend
+            diffy *= config.lines_extend
 
             l[0] -= diffx
             l[1] -= diffy
@@ -80,6 +80,10 @@ def find_lanes(input_image: ndarray,
     if config.med_blur_enable:
         image = cv.medianBlur(image, config.med_blur * 2 + 1)
 
+    if config.gauss_blur_enable:
+        gauss_k = config.gauss_blur * 2 + 1
+        image = cv.GaussianBlur(image,(gauss_k, gauss_k),cv.BORDER_DEFAULT)
+
     if config.enable_less_color:
         image = cv.cvtColor(image, cv.COLOR_BGR2HSV);
         channels = cv.split(image)
@@ -98,8 +102,8 @@ def find_lanes(input_image: ndarray,
         image = cv.convertScaleAbs(image, alpha=config.cc_alpha, beta=config.cc_beta)
 
     if config.enable_sharpen:
-        image = cv.GaussianBlur(image, (0, 0), config.sharp_kernel * 2 + 1);
-        image = cv.addWeighted(image, 1.5, image, -0.5, 0);
+        image2 = cv.GaussianBlur(image, (0, 0), config.sharp_kernel * 2 + 1);
+        image = cv.addWeighted(image2, 1 + config.sharp_weight, image, -1 * config.sharp_weight, 0);
 
 
     if config.edge_detect_enable:
@@ -108,10 +112,15 @@ def find_lanes(input_image: ndarray,
                     config.canny_upper_thresh,
                     apertureSize=config.canny_aperture_size * 2 + 1)
         elif config.edge_method == EdgeMethod.laplac:
-            image = cv.Laplacian(image, -1, config.lapla_ksize * 2 + 1)
-            image = cv.Sobel(image, -1, config.sobel_xorder,
-                        config.sobel_yorder,
-                        config.sobel_ksize * 2 + 1)
+            image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+            image = cv.Laplacian(image,cv.CV_64F, config.lapla_ksize * 2 + 1)
+            _,image = cv.threshold(image,0,255.0,cv.THRESH_TOZERO)
+            image = np.uint8(image)
+            #image = cv.Sobel(image, -1, config.sobel_xorder,
+            #            config.sobel_yorder,
+            #            config.sobel_ksize * 2 + 1)
+            if config.lapla_thresh_enable:
+                _, image = cv.threshold(image,config.lapla_thresh,255,cv.THRESH_BINARY) 
 
     # Dilate images
     if config.dilation_enable:
